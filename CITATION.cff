@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the Beta-Bernstein Bridge paper (see preferred-citation)."
+type: software
+title: "betabern"
+authors:
+  - family-names: Wei
+    given-names: Yumou
+    affiliation: Carnegie Mellon University
+license: MIT
+repository-code: "https://github.com/weiyumou/betabern"
+preferred-citation:
+  type: conference-paper
+  title: "The Beta-Bernstein Bridge: Closed-Form Bayesian Measurement Beyond Monotone Item Response Functions"
+  authors:
+    - family-names: Wei
+      given-names: Yumou
+  collection-title: "Proceedings of the AIME Conference (AIME-CON 2026)"
+  year: 2026

@@ -1,0 +1,28 @@
+#!/bin/bash
+# Guard: keep data and run outputs out of the repository history.
+# Deliberate, maintainer-approved exception: ALLOW_DATA=1 git commit ...
+[ "$ALLOW_DATA" = "1" ] && exit 0
+
+fail=0
+while IFS= read -r -d '' f; do
+    case "$f" in
+        uv.lock)  # lockfile: exempt from the size guard
+            continue
+            ;;
+        data/*|results/*|lightning_logs/*|*.npy|*.pt|*.ckpt|*.pth)
+            echo "BLOCKED (data-like path): $f" >&2
+            fail=1
+            continue
+            ;;
+    esac
+    if [ -f "$f" ] && [ "$(wc -c <"$f")" -gt 512000 ]; then
+        echo "BLOCKED (>500 KB): $f" >&2
+        fail=1
+    fi
+done < <(git diff --cached --name-only --diff-filter=AM -z)
+
+if [ "$fail" -eq 1 ]; then
+    echo "Data must not enter the repository history (see CLAUDE.md)." >&2
+    echo "For a deliberate, approved exception: ALLOW_DATA=1 git commit ..." >&2
+    exit 1
+fi

@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "betabern"
+version = "0.1.0"
+description = "The Beta-Bernstein Bridge: closed-form Bayesian measurement beyond monotone item response functions"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Yumou Wei", email = "yumouw@andrew.cmu.edu" }]
+keywords = [
+    "item response theory",
+    "psychometrics",
+    "Bayesian measurement",
+    "Bernstein polynomials",
+    "educational data mining",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "torch>=2.11",
+    "lightning>=2.6",
+    "torchmetrics>=1.9",
+    "scikit-learn>=1.8",
+    "scipy>=1.13",
+    "statsmodels>=0.14",
+    "numpy>=2.4",
+    "pandas>=3.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.5", {include-group = "papers"}]
+# Figure dependencies for the papers/ workspace; never shipped in the wheel
+papers = ["matplotlib>=3.10"]
+
+[project.scripts]
+betabern = "betabern.cli:main"
+
+[project.urls]
+Repository = "https://github.com/weiyumou/betabern"
+
+[tool.setuptools.packages.find]
+include = ["betabern*"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# The paper scripts bootstrap sys.path for their sibling modules before their imports by design
+"papers/*/scripts/*.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]  # makes the shared `helpers` module importable from test files
