@@ -29,7 +29,7 @@ class KnowledgeTracingTask(L.LightningModule, abc.ABC):
     Parameters
     ----------
     model : nn.Module
-        The model to train (BernsteinIRT or OnlineIRT).
+        The model to train: a ``BayesianEstimator``, a ``BayesianFilter``, or a ``StaticIRT``.
     learning_rate : float
         Learning rate for the optimizer.
     """

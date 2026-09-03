@@ -1,9 +1,9 @@
 """
 Online Beta-Bernstein quadrature estimator (static trait, processed sequentially).
 
-A *third* model kind alongside the sequential conjugate filters (``bernstein/filter``, which carry a
-learning transition) and the batch static estimators (``bernstein/estimator``, which marginalize the
-latent trait in one shot). This processes responses one at a time like a filter but assumes a single
+A *third* model kind alongside the sequential conjugate filters (which carry a learning transition and
+live in the separate *Filter* project) and the batch static estimators (``bernstein/estimator``, which
+marginalize the latent trait in one shot). This processes responses one at a time like a filter but assumes a single
 **static** latent trait — there is NO transition between steps. It therefore yields, at every step
 ``t``, the prequential predictive ``p(y_t | y_{<t})`` and a running EAP estimate of the trait.
 
@@ -11,7 +11,8 @@ It is built *around the filter base* (subclasses ``BayesianFilter``) and is a **
 that owns its IRF, prior, and fixed Gauss-Jacobi quadrature — the same construction as the batch
 ``QuadratureEstimator`` but run sequentially. The two are mathematically identical when given the
 same IRF/prior: summing the per-step predictive log-likelihoods recovers the batch marginal
-log-evidence (chain rule), and the final-step EAP equals the batch EAP. See ``tests/test_online.py``.
+log-evidence (chain rule), and the final-step EAP equals the batch ``posterior_stats(...).mean``.
+See ``tests/test_online.py``.
 
 The Gauss-Jacobi flavor (fixed ``Q`` nodes) keeps the filter state a constant-size ``(B, Q)`` vector
 ``S_q = sum_{i<=t} log p(y_i | theta_q)`` — the per-node cumulative log-likelihood. That update is
