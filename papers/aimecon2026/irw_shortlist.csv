@@ -1,0 +1,23 @@
+name,n_participants,n_items,n_responses,density,longitudinal,construct_name,sample,license
+number_pattern_game,606.0,255.0,272700.0,1.76470588235294,False,Number Game,"Internet-based (Mturkers, etc)",CC BY 4.0
+gilbert_meta_1,7797.0,30.0,226809.0,0.96964217006541,False,Modeling Item-Level Heterogeneous Treatment Effects With the Explanatory Item Response Model: Leveraging Large-Scale Online Assessments to Pinpoint the Impact of Educational Interventions,Educational,CC BY-NC-SA 4.0
+spelling_assessment_study1,673.0,109.0,73357.0,1.0,False,spelling assessment,Educational,CC BY 4.0
+art,1402.0,50.0,70100.0,1.0,False,Author Recognition Test,Educational,CC BY 4.0
+gilbert_meta_39,6818.0,10.0,68035.0,0.99787327662071,False,When Student Incentives Don't Work: Evidence from a Field Experiment in Malawi,Educational,CC0 1.0
+gilbert_meta_11,2588.0,24.0,59246.0,0.953857547655847,False,Vocabulary Knowledge Depth and Literacy Outcomes in Elementary School Students,Educational,CC BY-NC-SA 4.0
+gilbert_meta_12,2612.0,24.0,59005.0,0.941248723838693,False,"Improving Elementary Grade Students’ Science and Social Studies Vocabulary Knowledge Depth, Reading Comprehension, and Argumentative Writing: A Conceptual Replication",Educational,CC BY-NC-SA 4.0
+spelling_assessment_study2,786.0,72.0,56592.0,1.0,False,spelling assessment,"Educational, ""Internet-based (Mturkers, etc)""",CC BY 4.0
+gilbert_meta_7,1386.0,36.0,49259.0,0.987233445566779,False,Domain-Specific (Science) Vocabulary Knowledge,Educational,CC BY-NC-SA 4.0
+gilbert_meta_2,2174.0,20.0,43480.0,1.0,False,Content Literacy Intervention and Reading Comprehension in Early Elementary Students,Educational,CC BY-NC-SA 4.0
+gcbs_brotherton_2013_vcl,2495.0,16.0,39920.0,1.0,False,Vocabulary check,"Educational, ""Internet-based (Mturkers, etc)""",CC BY 4.0
+gilbert_meta_8,1335.0,29.0,37182.0,0.960402944595118,False,Domain-Specific (Science) Reading Comprehension,Educational,CC BY-NC-SA 4.0
+gilbert_meta_15,3510.0,10.0,35100.0,1.0,False,Partnership Schools for Liberia,Educational,CC0 1.0
+vocab_assessment_3_to_8_year_old_children,581.0,52.0,30212.0,1.0,False,oREV: Open Receptive Vocabulary Task (German) for children 3–8 years,General/non-specific,CC BY 4.0
+wooly_hartman2022,1561.0,19.0,29659.0,1.0,False,Do you know the Wooly Bully? Testing era-based knowledge to verify participant age online,Educational,CC BY 4.0
+gilbert_meta_55,1763.0,15.0,26445.0,1.0,False,Learning outcomes,"Program-based, Targeted/specific",CC0 1.0
+gilbert_meta_37,839.0,21.0,17619.0,1.0,False,Health Knowledge Survey (Entertainment-Education RCT),General/non-specific,CC0 1.0
+much_tte_2025_actionorientation,1244.0,12.0,14928.0,1.0,False,motivational disposition,"""Internet-based (Mturkers, etc)""",CC BY 4.0
+preschool_sel_akt,883.0,17.0,14506.0,0.966358004130304,False,Affect Knowledge Test-Shortened (AKT-S),Educational,CC BY 4.0
+preschool_sel_box,735.0,20.0,14234.0,0.968299319727891,False,Adapted Box Task,Educational,CC BY 4.0
+preschool_sel_dn,878.0,14.0,11472.0,0.933289944679466,False,Day–Night Task,Educational,CC BY 4.0
+preschool_sel_htks,847.0,10.0,8320.0,0.982290436835891,False,Head-Toes-Knees-Shoulders (HTKS) Task,Educational,CC BY 4.0

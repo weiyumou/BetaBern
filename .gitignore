@@ -6,8 +6,9 @@
 /references
 /base-code/
 /data/
-/prior-idea-*
+/prior-work*
 docs/*
+.DS_Store
 
 # TeX & LaTeX Build Artifacts
 *.log
@@ -245,4 +246,5 @@ __marimo__/
 # experiment outputs
 /lightning_logs/
 /results/
+/figures/   # generated paper figures + study CSVs (see papers/aimecon2026/README.md)
 /runs/

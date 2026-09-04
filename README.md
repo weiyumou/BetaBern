@@ -61,7 +61,7 @@ betabern merge <dir1> <dir2> --out <dir>                    # merge disjoint-dat
 |-----------------|----------|----------------------|
 | `betabern/`  | the installable package (below) | yes |
 | `examples/`     | a tiny benchmark config for smoke-testing the harness | no |
-| `papers/`       | paper-specific reproduction scripts, configs, and demos (`aimecon2026/`) | no |
+| `papers/`       | paper-specific reproduction scripts and benchmark configs (`aimecon2026/`) | no |
 | `tests/`        | pytest suite | no |
 
 ```

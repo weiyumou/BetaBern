@@ -25,22 +25,18 @@ from statsmodels.stats.multitest import multipletests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ai_mediated_fit as af
 
-EFFECTS = {"pronounced": dict(p_ai=0.95, sr=0.55), "mild": dict(p_ai=0.92, sr=0.80)}
+EFFECTS = af.EFFECTS
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out", type=Path, default=Path("figures/ai_mediated"))
-    p.add_argument("--students", type=int, default=2000)
-    p.add_argument("--degree", type=int, default=12)
-    p.add_argument("--epochs", type=int, default=200)
-    p.add_argument("--seeds", type=int, default=20)
+    af.add_study_args(p)
     p.add_argument("--ability", choices=["normal", "beta"], default="normal")
-    p.add_argument("--prior-a", type=float, default=4.0)
     args = p.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     a0 = args.prior_a
-    prior, prior_std = (a0, a0), af.H / np.sqrt(2 * a0 + 1)
+    prior, prior_std = af.priors(a0)
 
     rows = []
     for effect, params in EFFECTS.items():

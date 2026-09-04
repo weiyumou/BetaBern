@@ -12,7 +12,9 @@ Per item j:  RMSE_j = sqrt( mean_θ[ (P_fit_j(θ) − P_true_j(θ))^2 ] ), avera
 what the curves show). We average RMSE within item type (standard / AI-mediated) and report Δ = baseline −
 bounded (positive favours bounded) across seeds.
 
-    python papers/aimecon2026/scripts/ai_mediated_rmse.py --seeds 10
+Defaults reproduce the paper's Table 3 (median over 20 runs); pass ``--agg mean`` for the mean instead.
+
+    python papers/aimecon2026/scripts/ai_mediated_rmse.py
 """
 import argparse
 import sys
@@ -25,21 +27,17 @@ from scipy import stats as sps
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ai_mediated_fit as af
 
-EFFECTS = {"pronounced": dict(p_ai=0.95, sr=0.55), "mild": dict(p_ai=0.92, sr=0.80)}
+EFFECTS = af.EFFECTS
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out", type=Path, default=Path("figures/ai_mediated"))
-    p.add_argument("--students", type=int, default=2000)
-    p.add_argument("--degree", type=int, default=12)
-    p.add_argument("--epochs", type=int, default=200)
-    p.add_argument("--seeds", type=int, default=10)
-    p.add_argument("--prior-a", type=float, default=4.0)
+    af.add_study_args(p)
     args = p.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     a0 = args.prior_a
-    prior, prior_std = (a0, a0), af.H / np.sqrt(2 * a0 + 1)
+    prior, prior_std = af.priors(a0)
 
     grid = np.linspace(1e-3, 1 - 1e-3, 200)              # ability grid on [0,1] (uniform in η = 6θ − 3)
     w = np.ones_like(grid) / len(grid)                   # unweighted: equal weight across the ability range
@@ -69,13 +67,14 @@ def main():
 
     # per-seed mean RMSE within (effect, model, item type), then paired Δ vs bounded across seeds
     per = df.groupby(["effect", "model", "itype", "seed"])["rmse"].mean().reset_index()
-    print(f"\n=== IRF-recovery RMSE (mean over {args.seeds} seeds; unweighted over the ability grid; lower = better) ===")
+    print(f"\n=== IRF-recovery RMSE ({args.agg} over {args.seeds} seeds; unweighted over the ability grid; "
+          f"lower = better) ===")
     for effect in EFFECTS:
         print(f"\n[{effect}]")
         print(f"  {'model':<34} {'standard':>10} {'AI-mediated':>12}")
         for key in ("4pl", "mono", "bound"):
-            vals = {t: per[(per.effect == effect) & (per.model == key) & (per.itype == t)]["rmse"].mean()
-                    for t in ("std", "ai")}
+            vals = {t: getattr(per[(per.effect == effect) & (per.model == key) & (per.itype == t)]["rmse"],
+                               args.agg)() for t in ("std", "ai")}
             print(f"  {af.LABELS[key]:<34} {vals['std']:>10.4f} {vals['ai']:>12.4f}")
         # Δ on AI items (baseline − bounded), paired over seeds
         bvals = per[(per.effect == effect) & (per.model == "bound") & (per.itype == "ai")].set_index("seed")["rmse"]

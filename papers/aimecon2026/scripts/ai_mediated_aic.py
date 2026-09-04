@@ -7,7 +7,9 @@ and AIC `= 2k + 2·NLL_train` / BIC `= k·ln(N) + 2·NLL_train`, with `N` = numb
 (students) — the natural unit for a marginal IRT likelihood (ability integrated out per student). Lower is
 better; we report Δ = baseline − bounded (positive favours the bounded model), averaged over seeds.
 
-    python papers/aimecon2026/scripts/ai_mediated_aic.py --seeds 5
+Defaults reproduce the paper's Table 3 (median over 20 runs); pass ``--agg mean`` for the mean instead.
+
+    python papers/aimecon2026/scripts/ai_mediated_aic.py
 """
 import argparse
 import sys
@@ -20,7 +22,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ai_mediated_fit as af
 
-EFFECTS = {"pronounced": dict(p_ai=0.95, sr=0.55), "mild": dict(p_ai=0.92, sr=0.80)}
+EFFECTS = af.EFFECTS
 
 
 def kcount(model):
@@ -30,15 +32,11 @@ def kcount(model):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out", type=Path, default=Path("figures/ai_mediated"))
-    p.add_argument("--students", type=int, default=2000)
-    p.add_argument("--degree", type=int, default=12)
-    p.add_argument("--epochs", type=int, default=200)
-    p.add_argument("--seeds", type=int, default=5)
-    p.add_argument("--prior-a", type=float, default=4.0)
+    af.add_study_args(p)
     args = p.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     a0 = args.prior_a
-    prior, prior_std = (a0, a0), af.H / np.sqrt(2 * a0 + 1)
+    prior, prior_std = af.priors(a0)
     N = args.students  # marginal IRT: one likelihood term per student (response pattern)
 
     rows = []
@@ -60,9 +58,9 @@ def main():
     df = pd.DataFrame(rows)
     df.to_csv(args.out / "study_aic.csv", index=False)
 
-    print(f"\n=== parameter counts + AIC/BIC (mean over {args.seeds} seeds; N={N}) ===")
+    print(f"\n=== parameter counts + AIC/BIC ({args.agg} over {args.seeds} seeds; N={N}) ===")
     for effect in EFFECTS:
-        agg = df[df.effect == effect].groupby("model").mean(numeric_only=True)
+        agg = getattr(df[df.effect == effect].groupby("model"), args.agg)(numeric_only=True)
         print(f"\n[{effect}]")
         print(f"  {'model':<34} {'k':>4} {'AIC':>10} {'BIC':>10}")
         for key in ("4pl", "mono", "bound"):

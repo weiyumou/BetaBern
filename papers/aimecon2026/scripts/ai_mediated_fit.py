@@ -62,13 +62,39 @@ def sig(x):
     return 1.0 / (1.0 + np.exp(-x))
 
 
-def hybrid_p(theta01, spec):
-    """True hybrid P(correct) on the [0,1] ability grid for one item spec."""
-    eta = 2 * H * theta01 - H
+def to_eta(theta01):
+    """Bernstein ability ``theta in [0,1]`` -> the IRT scale, via the link ``eta = 2H*theta - H``."""
+    return 2 * H * np.asarray(theta01, dtype=float) - H
+
+
+def item_spec(kind="ai", *, a=1.6, b=0.0, p_ai=0.95, tr=0.0, sr=0.55, r_max=1.0):
+    """One item of the generative model. ``kind='std'`` pins reliance to 0 (a plain 2PL)."""
+    return dict(type=kind, a=a, b=b, p_ai=(p_ai if kind == "ai" else 0.0), tr=tr, sr=sr, r_max=r_max)
+
+
+def hybrid_parts(eta, spec):
+    """The AI-mediated generative model on the IRT scale ``eta in R`` -- the single definition.
+
+    Returns ``(P, p_student, reliance)`` so callers can draw the mechanism (which ingredient bends the
+    curve) as well as the realized IRF, without restating the model.
+
+        p_S(eta) = sigmoid(a * (eta - b))                  # student alone (a 2PL curve)
+        r(eta)   = r_max * sigmoid(-(eta - tr) / sr)       # reliance: P(defer to the AI); 0 for 'std' items
+        P(eta)   = r * p_A + (1 - r) * p_S                 # reliance-weighted mixture
+    """
+    eta = np.asarray(eta, dtype=float)
     p_s = sig(spec["a"] * (eta - spec["b"]))
-    r = sig(-(eta - spec["tr"]) / spec["sr"]) if spec["type"] == "ai" else 0.0  # reliance in [0,1]: P(defer to AI)
-    p_a = spec["p_ai"] if spec["type"] == "ai" else 0.0
-    return r * p_a + (1 - r) * p_s   # reliance-weighted mixture: r·p_A (AI) + (1−r)·p_S (student alone)
+    if spec["type"] == "ai":
+        r = spec.get("r_max", 1.0) * sig(-(eta - spec["tr"]) / spec["sr"])
+        p_a = spec["p_ai"]
+    else:
+        r, p_a = np.zeros_like(eta), 0.0
+    return r * p_a + (1 - r) * p_s, p_s, r
+
+
+def hybrid_p(theta01, spec):
+    """Realized ``P(correct)`` on the ``[0,1]`` Bernstein grid -- :func:`hybrid_parts` through the link."""
+    return hybrid_parts(to_eta(theta01), spec)[0]
 
 
 def make_items(p_ai=0.95, sr=0.55):
@@ -79,8 +105,8 @@ def make_items(p_ai=0.95, sr=0.55):
     AI with sharp reliance, so a correct response is genuinely ambiguous between low ability (rode the AI) and
     high (did it alone). The sensitivity study uses the milder ``p_ai=0.92, sr=0.8``.
     """
-    std = [dict(type="std", a=1.6, b=b, p_ai=0.0, tr=0.0, sr=1.0) for b in (-1.2, -0.4, 0.4, 1.2)]
-    ai = [dict(type="ai", a=1.6, b=b, p_ai=p_ai, tr=0.0, sr=sr) for b in (-0.4, 0.0, 0.4, 0.8, 1.2, 1.6)]
+    std = [item_spec("std", b=b, sr=1.0) for b in (-1.2, -0.4, 0.4, 1.2)]
+    ai = [item_spec("ai", b=b, p_ai=p_ai, sr=sr) for b in (-0.4, 0.0, 0.4, 0.8, 1.2, 1.6)]
     return std + ai
 
 
@@ -128,7 +154,7 @@ def bern_curve(model, item_idx, theta01):
 
 def irt_curve(model, item_idx, theta01):
     """Fitted direct-IRT IRF on the [0,1] grid (evaluate on the R grid eta=6*theta-3, same axis)."""
-    eta = torch.tensor(2 * H * theta01 - H, dtype=torch.float).unsqueeze(0)   # (1, Q)
+    eta = torch.tensor(to_eta(theta01), dtype=torch.float).unsqueeze(0)   # (1, Q)
     item_ids = torch.tensor([[item_idx]])
     skill = torch.zeros(1, 1, dtype=torch.long)
     with torch.no_grad():
@@ -140,7 +166,7 @@ def fig_recovery(items, models, theta01, out, formats):
     """Two representative items: a standard 2PL (all agree) and an AI-mediated valley (only bounded fits)."""
     std_idx = next(i for i, it in enumerate(items) if it["type"] == "std" and abs(it["b"]) < 0.5)
     ai_idx = next(i for i, it in enumerate(items) if it["type"] == "ai" and abs(it["b"]) < 0.1)
-    eta = 2 * H * theta01 - H
+    eta = to_eta(theta01)
     fig, axes = plt.subplots(1, 2, figsize=figstyle.figsize("text", 0.46))
     for ax, idx, title in ((axes[0], std_idx, "(a) Standard item (monotone 2PL)"),
                            (axes[1], ai_idx, "(b) AI-mediated item (non-monotone)")):
@@ -179,7 +205,7 @@ def draw_posterior(ax, model, items, *, xlabel="ability  η = 6θ−3",
     mean, std = float(post.mean), float(post.std)
 
     th = np.linspace(1e-3, 1 - 1e-3, 600)
-    eta = 2 * H * th - H
+    eta = to_eta(th)
     exact = (pi[None, :] * beta_dist.pdf(th[:, None], a[None, :], b[None, :])).sum(-1) / (2 * H)  # density in eta
     gauss = norm_dist.pdf(th, mean, std) / (2 * H)
     peaks = int(((exact[1:-1] > exact[:-2]) & (exact[1:-1] > exact[2:])).sum())
@@ -189,7 +215,7 @@ def draw_posterior(ax, model, items, *, xlabel="ability  η = 6θ−3",
     ax.fill_between(eta, exact, color=C_BOUND, alpha=0.18)
     ax.plot(eta, exact, color=C_BOUND, lw=2.4, label=exact_label)
     ax.plot(eta, gauss, color=C_TRUE, lw=1.8, ls="--", label=gauss_label)
-    ax.axvline(2 * H * mean - H, color=figstyle.OKABE_ITO["grey"], lw=1.0, ls=":")
+    ax.axvline(to_eta(mean), color=figstyle.OKABE_ITO["grey"], lw=1.0, ls=":")
     ax.set(xlabel=xlabel, ylabel="posterior density", title=title)
     ax.set_xlim(eta.min() - 0.25, eta.max() + 0.25)
     ax.margins(y=0.08)
@@ -213,6 +239,32 @@ def fig_posterior(model, items, out, formats):
 
 LABELS = {"4pl": "4PL IRT (monotone)", "mono": "free Bernstein (monotone)",
           "bound": "free Bernstein (bounded, ours)"}
+
+# The paper's Table 3 reports the MEDIAN over 20 simulation runs. The median is the intended default:
+# the free-Bernstein objective is non-convex, so an occasional run settles in a pathological tail fit
+# that moves a mean but not a median. Keep `--seeds 20 --agg median` to reproduce the published table.
+PAPER_SEEDS = 20
+AGG_CHOICES = ("median", "mean")
+
+
+def add_study_args(p, *, seeds=PAPER_SEEDS):
+    """The knobs shared by the multi-run study scripts, so their defaults cannot drift apart."""
+    p.add_argument("--students", type=int, default=2000)
+    p.add_argument("--degree", type=int, default=12)
+    p.add_argument("--epochs", type=int, default=200)
+    p.add_argument("--seeds", type=int, default=seeds, help="independent simulation runs (paper: 20).")
+    p.add_argument("--prior-a", type=float, default=4.0)
+    p.add_argument("--agg", choices=AGG_CHOICES, default="median",
+                   help="across-run aggregate (paper: median).")
+    return p
+
+
+def priors(a0):
+    """The matched prior pair: Beta(a0,a0) on [0,1] and the Normal SD on eta = 2H*theta - H."""
+    return (a0, a0), H / np.sqrt(2 * a0 + 1)
+
+
+EFFECTS = {"pronounced": dict(p_ai=0.95, sr=0.55), "mild": dict(p_ai=0.92, sr=0.80)}
 
 
 def build_models(students, degree, n_items, prior, prior_std):
@@ -276,9 +328,10 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out", type=Path, default=Path("figures"))
     p.add_argument("--formats", default="png,pdf")
-    p.add_argument("--students", type=int, default=4000)
+    p.add_argument("--students", type=int, default=2000,
+                   help="matches the study scripts, so the figures and Table 3 share one configuration.")
     p.add_argument("--degree", type=int, default=12)
-    p.add_argument("--epochs", type=int, default=400)
+    p.add_argument("--epochs", type=int, default=200)
     p.add_argument("--prior-a", type=float, default=4.0,
                    help="Beta(a,a) prior for the Bernstein models; the 4PL Normal SD is matched to it.")
     p.add_argument("--ability", choices=["normal", "beta"], default="normal",
@@ -298,8 +351,7 @@ def main():
     items = make_items(p_ai=args.ai_pa, sr=args.ai_sr)
     n_items = len(items)
     a0 = args.prior_a
-    prior = (a0, a0)
-    prior_std = H / np.sqrt(2 * a0 + 1)  # Normal SD on eta matching Beta(a0,a0) under eta=6θ−3 (mean 0)
+    prior, prior_std = priors(a0)  # Beta(a0,a0) on [0,1] <-> matched Normal SD on eta
     spec = "correctly specified for the 4PL" if args.ability == "normal" else "correctly specified for the Bernstein"
     print(f"items: {sum(it['type']=='std' for it in items)} standard (pure 2PL) + "
           f"{sum(it['type']=='ai' for it in items)} AI-mediated; students={args.students} train/test each; "

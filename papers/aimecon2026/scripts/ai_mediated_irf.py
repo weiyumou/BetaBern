@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # for figstyle (sibling module)
+import ai_mediated_fit as af
 import figstyle
 
 figstyle.apply()
@@ -37,26 +38,6 @@ C_STUDENT = figstyle.OKABE_ITO["grey"]        # pure student curve (reference)
 C_DILUTE = figstyle.OKABE_ITO["blue"]         # monotone dilution
 C_NONMONO = figstyle.OKABE_ITO["vermillion"]  # non-monotone valley
 C_AI = figstyle.OKABE_ITO["green"]            # AI competence
-
-
-def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(-x))
-
-
-def student_irf(theta, a=1.5, b=0.0):
-    """Student-alone 2PL success probability."""
-    return sigmoid(a * (theta - b))
-
-
-def reliance(theta, r_max=1.0, tr=0.0, sr=1.0):
-    """Probability the student defers to the AI; decreasing in theta when sr > 0."""
-    return r_max * sigmoid(-(theta - tr) / sr)
-
-
-def hybrid_irf(theta, p_ai, *, a=1.5, b=0.0, r_max=1.0, tr=0.0, sr=1.0):
-    p_s = student_irf(theta, a, b)
-    r = reliance(theta, r_max, tr, sr)
-    return r * p_ai + (1.0 - r) * p_s, p_s, r
 
 
 def _is_nonmonotone(p, tol=1e-3):
@@ -71,21 +52,26 @@ def _describe(name, theta, p):
           f"min@theta={theta[i]:+.2f}  discrimination(span)={p.max() - p.min():.3f}  [{flag}]")
 
 
+FIG_ITEM = af.item_spec("ai", b=0.0)   # the paper's pronounced setting, and the item Figure 2 refits
+
+
 def _fit_bounded(seed=0, students=2000, degree=12, epochs=200, prior_a=4.0):
-    """Fit the bounded (non-monotone-capable) Bernstein model on a fresh AI-mediated sample, matching the
-    standalone posterior figure's settings, so the opening panel shows the genuine recovered posterior."""
-    import ai_mediated_fit as af
+    """Fit the bounded (non-monotone-capable) Bernstein model on a fresh AI-mediated sample, so the opening
+    panel shows a genuine recovered posterior rather than a sketch.
+
+    These are the *study* settings (2000 students, 200 epochs, degree 12) -- the ones behind Table 3 -- not
+    ``ai_mediated_fit.py``'s single-run figure defaults (4000 students, 400 epochs), so this panel and the
+    standalone posterior figure are fitted on different samples and need not be pixel-identical."""
     import torch
 
     torch.manual_seed(seed)
     items = af.make_items()                                  # pronounced AI effect (defaults)
-    prior = (prior_a, prior_a)
-    prior_std = af.H / np.sqrt(2 * prior_a + 1)
+    prior, prior_std = af.priors(prior_a)
     _, y_tr = af.generate(students, items, prior_a, seed=seed, ability="normal")
     train = af.as_batch(y_tr)
     model = af.build_models(students, degree, len(items), prior, prior_std)["bound"]
     af.fit_mml(model, *train, epochs=epochs, lr=0.05)
-    return af, model, items
+    return model, items
 
 
 def fig_main(theta, out: Path, formats):
@@ -94,8 +80,10 @@ def fig_main(theta, out: Path, formats):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figstyle.figsize("text", 0.42))
 
     # (a) student-alone vs AI-assisted (non-monotone valley) --------------------------------------
-    p_s = student_irf(theta)
-    p_nm, _, _ = hybrid_irf(theta, p_ai=0.92, sr=0.8)               # steep reliance -> valley
+    # Drawn at the SAME settings the paper states for RQ-2 (p_A = 0.95, s_r = 0.55, a = 1.6) and on the
+    # same b = 0 AI-mediated item that Figure 2 refits, so panels (a) and (b) and Figure 2 all describe
+    # one item under one generative model.
+    p_nm, p_s, _ = af.hybrid_parts(theta, FIG_ITEM)
     ax1.plot(theta, p_s, color=C_STUDENT, lw=2.0, ls=":", label="Student alone (2PL)")
     ax1.plot(theta, p_nm, color=C_NONMONO, lw=2.2, label="AI-assisted")
     ax1.set(xlabel="Ability", ylabel="P(correct)", ylim=(0, 1),
@@ -105,7 +93,7 @@ def fig_main(theta, out: Path, formats):
         _describe(name, theta, p)
 
     # (b) the genuine closed-form posterior the valley induces is bimodal --------------------------
-    af, model, items = _fit_bounded()
+    model, items = _fit_bounded()
     peaks, mean, std = af.draw_posterior(ax2, model, items, xlabel="Ability",
                                          title="(b) The induced posterior is bimodal",
                                          legend_loc="upper right", compact=True)
@@ -120,8 +108,8 @@ def fig_main(theta, out: Path, formats):
 
 def fig_mechanism(theta, out: Path, formats):
     """Decompose the non-monotone case into its ingredients so the dip is legible."""
-    p_nm, p_s, r = hybrid_irf(theta, p_ai=0.92, sr=0.8)
-    p_ai = np.full_like(theta, 0.92)
+    p_nm, p_s, r = af.hybrid_parts(theta, FIG_ITEM)
+    p_ai = np.full_like(theta, FIG_ITEM["p_ai"])
     fig, ax = plt.subplots(figsize=figstyle.figsize(3.5, 0.82))
     ax.plot(theta, p_s, color=C_STUDENT, lw=1.8, ls=":", label="student alone  $p_S(θ)$")
     ax.plot(theta, p_ai, color=C_AI, lw=1.6, ls="--", label="AI alone  $p_A$")
@@ -151,7 +139,8 @@ def main():
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
     args.out.mkdir(parents=True, exist_ok=True)
     theta = np.linspace(-3.0, 3.0, 400)
-    print("AI-mediated IRF shapes (a=1.5, b=0, p_A=0.92):")
+    print(f"AI-mediated IRF shapes (a={FIG_ITEM['a']}, b={FIG_ITEM['b']}, "
+          f"p_A={FIG_ITEM['p_ai']}, s_r={FIG_ITEM['sr']}) -- the paper's pronounced setting:")
     fig_main(theta, args.out, formats)
     fig_mechanism(theta, args.out, formats)
     print(f"done -> {args.out}")
